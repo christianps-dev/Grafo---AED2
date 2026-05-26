@@ -1,5 +1,3 @@
----
-
 # Min-Heap em Python para Algoritmo de Dijkstra
 
 Esta é uma implementação customizada e otimizada de uma Fila de Prioridade (Min-Heap) construída do zero em Python. Ela foi projetada especificamente para servir como o "motor" do **Algoritmo de Dijkstra** ao trabalhar com **Listas de Adjacência**.
@@ -35,45 +33,6 @@ Retorna a tupla de menor distância sem removê-la da estrutura. Levanta erro se
 
 ---
 
-## Exemplo de Uso (Contexto Dijkstra)
-
-Veja como integrar a classe `Heap` dentro do laço principal do Algoritmo de Dijkstra:
-
-```python
-from sua_biblioteca import Heap
-
-# 1. Inicializa a Heap e insere o vértice de origem
-minha_heap = Heap()
-origem = 0
-distancias = [float('inf')] * total_vertices
-
-# Insere a origem: (distância_acumulada, vértice_atual)
-distancias[origem] = 0.0
-minha_heap.insert((0.0, origem))
-
-# 2. Loop principal de busca
-while not minha_heap.isEmpty():
-    # Extrai o caminho mais curto atual
-    dist_atual, u = minha_heap.extractMin()
-    
-    # -----------------------------------------------------
-    # ESTRATÉGIA DE LAZY DELETION (Remoção Preguiçosa)
-    # Se essa distância que saiu da heap for maior que a
-    # já registrada, é uma rota velha/ineficiente. Ignoramos.
-    # -----------------------------------------------------
-    if dist_atual > distancias[u]:
-        continue
-        
-    # 3. Varre os vizinhos na Lista de Adjacência
-    for peso, v in lista_adj[u]:
-        nova_dist = dist_atual + peso
-        
-        # Se achou um caminho mais rápido, atualiza e joga na Heap
-        if nova_dist < distancias[v]:
-            distancias[v] = nova_dist
-            minha_heap.insert((nova_dist, v))
-
-```
 
 ## 🧠 Arquitetura de Memória e Índices
 

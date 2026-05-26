@@ -1,0 +1,2 @@
+
+FATOR_ESCALA = 2.0

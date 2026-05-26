@@ -1,80 +1,120 @@
-# Documentação: Algoritmo de Dijkstra e Estruturas Base
+# Documentação Técnica: `djikstra_geometrico.py`
 
-Este documento detalha a implementação do algoritmo de busca de menor caminho (Dijkstra) e as estruturas de dados fundamentais para a representação do grafo em memória. O código atende à responsabilidade de implementar a lógica de busca e otimização , utilizando uma fila de prioridade baseada em Heap Mínima.
+## 1. Visão Geral do Ficheiro
 
-## 1. Módulos e Constantes
+O ficheiro `djikstra_geometrico.py` atua como o **motor matemático e lógico** do sistema de navegação espacial. O seu propósito central é carregar dados geográficos planificados, estruturá-los na memória do computador e calcular a rota mais eficiente (menor caminho) entre dois pontos utilizando o **Algoritmo de Dijkstra**.
 
-* **`math`**: Utilizado para o cálculo de raízes quadradas na distância euclidiana.
-
-* **`Heap`**: Módulo customizado importado localmente (`from .heap import Heap`) que fornece a estrutura de Fila de Prioridade, garantindo eficiência na extração do vértice mais próximo.
-
-
-* **`INF`**: Constante definida como `1e9` (1 bilhão) que atua como o valor representativo de "infinito" para inicializar as distâncias dos vértices.
+Este módulo foi desenhado para ser consumido por outros ficheiros (como um ficheiro `main.py` integrador), motivo pelo qual o seu bloco de execução direta (`main()`) encontra-se comentado no final do código.
 
 ---
 
-## 2. Modelagem de Dados
+## 2. Dependências e Configurações Globais
 
-A base do sistema é construída sobre duas classes principais para representar as entidades geométricas e lógicas do mapa:
+### Módulos Importados
 
-| Classe | Atributos | Descrição |
-| --- | --- | --- |
-| **`Vertice`** | `id` (int), `x` (float), `y` (float) | Representa um ponto no mapa geográfico. Armazena um identificador único e as coordenadas espaciais. |
-| **`Aresta`** | `orig` (int), `dest` (int) | Representa uma conexão (rua/via) entre dois vértices, utilizando seus respectivos identificadores. |
+* **`math`**: Fornece a função `sqrt` para o cálculo da raiz quadrada na fórmula de distância euclidiana.
+* **`time`**: Fornece `perf_counter` para medição de alta precisão (em milissegundos) do tempo de execução do algoritmo.
+* **`Heap` (Local)**: Estrutura de dados de Fila de Prioridade (Min-Heap) importada do ficheiro `heap.py`. É crucial para garantir a eficiência $O((V + E) \log V)$ do algoritmo.
+* **`FATOR_ESCALA` (Local)**: Variável importada do ficheiro `config.py`, utilizada para converter a distância em píxeis (ecrã) para a distância real (metros).
 
----
+### Constantes
 
-## 3. Funções de Apoio e Estruturação
-
-### `calc_dist(x0, y0, x1, y1) -> float`
-
-Calcula a distância euclidiana geométrica entre dois pontos bidimensionais.
-**Fórmula Matemática:**
-$d = \sqrt{(x_0 - x_1)^2 + (y_0 - y_1)^2}$
-
-### `construir_grafo(vertices: list, arestas: list) -> list`
-
-Converte as listas brutas de vértices e arestas em uma **Lista de Adjacência**, que é a estrutura ideal para lidar com grafos esparsos de forma eficiente.
-
-* **Processo:** Itera sobre as arestas, calcula a distância real entre a origem e o destino usando `calc_dist`, e popula a lista bidimensional.
-* **Nota de Comportamento:** Atualmente, a função insere a conexão em ambos os sentidos (mão dupla).
-
-### `visualizar_lista_console(lista_adj: list)`
-
-Gera uma representação visual formatada da lista de adjacência diretamente no terminal, facilitando o debug e a validação das conexões geométricas.
+* **`INF = 1e9`**: Representa um valor infinitamente grande (mil milhões) utilizado para inicializar as distâncias desconhecidas no grafo antes da avaliação.
 
 ---
 
-## 4. Algoritmo Principal
+## 3. Estruturas de Dados (Classes)
 
-### `dijkstra(grafo: list, vertices: list, inicio: int, fim: int)`
+O código utiliza programação orientada a objetos para tipar e organizar os elementos do mapa cartográfico:
 
-Calcula a rota indicativa do menor caminho entre dois vértices, imprimindo as coordenadas passo a passo.
+### Classe `Vertice`
 
-**Etapas de Execução:**
+Representa um ponto ou cruzamento no mapa cartográfico.
 
-1. **Inicialização:** Cria um vetor de distâncias (`dist`) inicializado com `INF` e um vetor de predecessores (`prev`) inicializado com `-1`. A distância do vértice de início é definida como `0.0`.
+* **`id` (int)**: Identificador único numérico do vértice.
+* **`x` (float)**: Coordenada no eixo X (leste-oeste).
+* **`y` (float)**: Coordenada no eixo Y (norte-sul).
 
+### Classe `Aresta`
 
-2. **Fila de Prioridade:** Instancia a `Heap` mínima e insere o vértice de origem.
+Representa uma via ou rua que liga dois vértices.
 
-
-3. **Busca e Relaxamento:** Enquanto a fila não estiver vazia, o vértice com menor distância acumulada é extraído. O algoritmo varre todos os seus vizinhos reais e atualiza (relaxa) o custo do caminho se encontrar uma rota mais vantajosa.
-
-
-4. **Remoção Preguiçosa (Lazy Deletion):** Otimização que ignora vértices extraídos da Heap se a distância atual registrada for maior do que a já confirmada no vetor de distâncias. Isso evita sobrecarga de memória.
-
-
-5. **Reconstrução de Rota:** Utiliza o vetor de predecessores para rastrear o caminho do destino até a origem, invertendo a lista no final para exibir o trajeto ordenado.
+* **`orig` (int)**: Identificador do vértice de origem.
+* **`dest` (int)**: Identificador do vértice de destino.
+* **`tipo` (int)**: Regra de trânsito associada à via. Recebe `1` para via de sentido único (mão única) ou `2` para via de dois sentidos (mão dupla).
 
 ---
 
-## 5. Fluxo de Execução (`main`)
+## 4. Funções Principais
 
-A função principal do script executa as seguintes operações para fins de teste isolado (mock):
+### 4.1. `calc_dist(x0, y0, x1, y1) -> float`
 
-1. Instancia `18` vértices fictícios com coordenadas flutuantes.
-2. Instancia `18` arestas conectando os vértices em um formato poligonal fechado.
-3. Constrói a lista de adjacência e a imprime no terminal.
-4. Solicita ao usuário (via CLI) os nós de origem e destino, validando os limites (0 a 17).
-5. Aciona a função `dijkstra` para processamento e exibição textual do menor caminho.
+Calcula a distância em linha reta (Euclidiana) entre dois pontos num plano bidimensional bidimensional. Atua como a função de custo/peso para as arestas do grafo.
+
+* **Matemática Aplicada**: Utiliza o Teorema de Pitágoras: $d = \sqrt{(x_0 - x_1)^2 + (y_0 - y_1)^2}$.
+
+### 4.2. `construir_grafo(vertices: list, arestas: list) -> list`
+
+Converte as listas lineares de vértices e arestas numa **Lista de Adjacência**, otimizada para o consumo do algoritmo de Dijkstra.
+
+* **Processamento de Custo**: Calcula automaticamente o peso da aresta através da função `calc_dist` invocada com as coordenadas em tempo real.
+* **Lógica Direcional (Controlo de Fluxo)**:
+* A ligação da origem para o destino (`A -> B`) é **sempre** adicionada.
+* A ligação reversa (`B -> A`) **apenas** é adicionada se o atributo `tipo` da aresta for igual a `2` (indicando permissão de mão dupla). Isto confere ao grafo a capacidade de respeitar as regras de trânsito da topologia real.
+
+
+
+### 4.3. `carregar_mapa_poly(caminho_arquivo)`
+
+Efetua o *parsing* (leitura e interpretação) de um ficheiro de texto estruturado com a extensão `.poly`.
+
+* **Fluxo de Leitura**:
+1. Abre o ficheiro e lê todas as linhas.
+2. Extrai o número total de vértices a partir do cabeçalho inicial.
+3. Itera pelas linhas seguintes para instanciar os objetos da classe `Vertice`.
+4. Localiza o número total de arestas e continua a iteração para instanciar a classe `Aresta`. Note-se a captura obrigatória da 4.ª coluna (`dados[3]`) que define o `tipo` da via.
+
+
+* **Retorno**: Um tuplo contendo a lista de instâncias de vértices e arestas `(vertices, arestas)`.
+
+---
+
+## 5. O Núcleo: `dijkstra(grafo, vertices, inicio, fim)`
+
+Esta é a função central que executa o cálculo de rotas. Foi desenhada tendo em conta o desempenho elevado e a recolha de métricas de execução.
+
+### Fluxo de Execução do Algoritmo:
+
+1. **Inicialização**:
+* Cria o vetor de distâncias (`dist`) inicializado a "infinito" (`INF`), à exceção da origem (distância `0.0`).
+* Cria o vetor de predecessores (`prev`) inicializado a `-1` para rastreamento posterior do caminho.
+
+
+2. **Ciclo de Busca (Min-Heap)**:
+* Extrai sucessivamente o nó mais próximo da Fila de Prioridade (`Heap`).
+* Aplica a otimização de **Lazy Deletion** (Remoção Preguiçosa): se a distância extraída for maior que a distância registada em `dist`, o nó é ignorado.
+* Regista o incremento de nós explorados (`nos_explorados += 1`).
+* Efetua o **relaxamento** das arestas adjacentes: verifica se o caminho atualizado custa menos do que o conhecimento anterior. Se sim, atualiza a matriz e introduz o novo valor na Fila de Prioridade.
+
+
+3. **Pós-processamento e Métricas**:
+* O relógio de precisão (`perf_counter`) regista o momento exato em que o algoritmo conclui a tarefa.
+* Valida a existência do caminho (se o destino continuar como `INF`, retorna a falha na rota).
+* Converte a distância lógica (píxeis baseados em coordenadas) para distância real no mundo (metros) multiplicando pelo `FATOR_ESCALA`.
+
+
+4. **Reconstrução da Rota**:
+* Utiliza a matriz de predecessores (`prev`) do fim até à origem e inverte a matriz (`caminho.reverse()`) para fornecer a ordem correta das direções.
+
+
+5. **Apresentação e Retorno (Interface / API)**:
+* Imprime no ecrã um relatório completo da execução (tempos, nós iterados e custos lógicos e reais).
+* **Retorno Funcional**: Exporta e devolve um dicionário (JSON-like) contendo todas as variáveis cruciais (`caminho_ids`, `distancia_pixels`, `distancia_metros`, `nos_explorados`, `tempo_ms`). Isto permite que qualquer interface gráfica utilize estes dados para desenhar e apresentar a solução visualmente sem acoplar a lógica à interface.
+
+
+
+---
+
+## 6. Secção Comentada (Testes Históricos)
+
+No final do ficheiro, existe uma função `main()` encapsulada entre triplas aspas `"""`. Este código serviu para testes em consola durante o desenvolvimento (solicitando *inputs* textuais de nó de origem e nó de destino, e efetuando tratamento de exceções `ValueError`). Como o sistema evoluiu para uma arquitetura modular acionada por um integrador externo, este bloco foi corretamente isolado para não interferir nas importações em produção.
