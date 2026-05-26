@@ -1,6 +1,10 @@
 import math
+from heap import Heap
 
-INF = 1e9
+
+# SE PRONUNCIA DI Á IS TRA 
+
+INF = 1e9 # serve como um valor "nulo"
 
 
 class Vertice:
@@ -22,22 +26,48 @@ def calc_dist(x0: float, y0: float, x1: float, y1: float) -> float:
 
 
 def construir_grafo(vertices: list, arestas: list) -> list:
-    """Monta e retorna a matriz de adjacência preenchida com as distâncias geométricas."""
+    """Monta e retorna a lista de adjacência preenchida com as distâncias geométricas."""
     total_vertices = len(vertices)
     # Inicializa a matriz com valor infinito para indicar ausência de conexões
-    matriz_adj = [[INF] * total_vertices for _ in range(total_vertices)]
-
+    # grafo = [[INF] * total_vertices for _ in range(total_vertices)]
+    lista_adj = [[] for _ in range (total_vertices)]
     for art in arestas:
         a = art.orig
         b = art.dest
         distancia = calc_dist(vertices[a].x, vertices[a].y, vertices[b].x, vertices[b].y)
-        matriz_adj[a][b] = distancia
-        matriz_adj[b][a] = distancia  # Grafo não direcionado
+        lista_adj[a].append((distancia, b))
+        lista_adj[b].append((distancia, a))
 
-    return matriz_adj
+    return lista_adj
+
+def visualizar_lista_console(lista_adj: list):
+    """Imprime a lista de adjacência formatada no console."""
+    n = len(lista_adj)
+    
+    print("\n" + "=" * 65)
+    print(" LISTA DE ADJACÊNCIA ".center(65))
+    print("=" * 65)
+    
+    for i in range(n):
+        # Imprime o vértice de origem
+        print(f" Vértice {i:>2} |", end="")
+         # Carga de dados idêntica à lista V do arquivo MenorCaminhoDijkstrav2.c
+        # Se a lista estiver vazia (sem vizinhos)
+        if not lista_adj[i]:
+            print(" Sem conexões", end="")
+        else:
+            # Percorre os vizinhos do vértice i
+            # Lembrando que sua tupla foi salva como (distancia, destino)
+            for distancia, destino in lista_adj[i]:
+                print(f" ➔ (Dest: {destino:>2}, dist: {distancia:>5.1f})", end="")
+                
+        print() # Quebra de linha para o próximo vértice
+        
+    print("=" * 65 + "\n")
 
 
-def dijkstra(matriz_adj: list, vertices: list, inicio: int, fim: int):
+
+def dijkstra(grafo: list, vertices: list, inicio: int, fim: int):
     total_vertices = len(vertices)
     dist = [INF] * total_vertices
     prev = [-1] * total_vertices
@@ -47,12 +77,12 @@ def dijkstra(matriz_adj: list, vertices: list, inicio: int, fim: int):
 
     for _ in range(total_vertices):
         # Encontra o vértice não visitado com a menor distância atualizada
-        u = -1
+        u = -1 # vértice atual
         min_dist = INF
         for j in range(total_vertices):
             if not visited[j] and dist[j] < min_dist:
                 u = j
-                min_dist = dist[j]
+                min_dist = dist[j]  
 
         if u == -1:
             break
@@ -60,9 +90,9 @@ def dijkstra(matriz_adj: list, vertices: list, inicio: int, fim: int):
         visited[u] = True
 
         # Relaxamento das arestas vizinhas
-        for v in range(total_vertices):
-            if matriz_adj[u][v] < INF and dist[u] + matriz_adj[u][v] < dist[v]:
-                dist[v] = dist[u] + matriz_adj[u][v]
+        for v in range(total_vertices): # vertice vizinho
+            if grafo[u][v] < INF and dist[u] + grafo[u][v] < dist[v]:
+                dist[v] = dist[u] + grafo[u][v]
                 prev[v] = u
 
     if dist[fim] == INF:
@@ -85,7 +115,7 @@ def dijkstra(matriz_adj: list, vertices: list, inicio: int, fim: int):
 
 
 def main():
-    # Carga de dados idêntica à lista V do arquivo MenorCaminhoDijkstrav2.c
+   
     v_dados = [
         (0, 149.0, 200.0), (1, 225.0, 200.0), (2, 156.175936, 193.978675),
         (3, 164.288446, 189.294915), (4, 173.091035, 186.091035), (5, 182.316240, 184.464382),
@@ -96,7 +126,7 @@ def main():
     ]
     vertices = [Vertice(d[0], d[1], d[2]) for d in v_dados]
 
-    # Carga de dados idêntica à lista A do arquivo MenorCaminhoDijkstrav2.c
+    
     a_dados = [
         (0, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 0),
         (9, 10), (10, 11), (11, 12), (12, 13), (13, 14), (14, 15), (15, 16), (16, 17), (17, 0)
@@ -106,9 +136,9 @@ def main():
     total_vertices = len(vertices)
     total_arestas = len(arestas)
 
-    matriz_adj = construir_grafo(vertices, arestas)
-
-    print("Menor caminho entre dois vertices - algoritmo de Dijkstra\n")
+    grafo = construir_grafo(vertices, arestas)
+    visualizar_lista_console(grafo)
+    print("Menor caminho entre dois vertices - algoritmo de Dijkstra\n")    
     print(f"Total de vertices: {total_vertices}")
     print(f"Total de arestas : {total_arestas}")
 
@@ -117,7 +147,7 @@ def main():
         destino = int(input(f"Digite o vertice de destino (0 a {total_vertices - 1}): "))
 
         if 0 <= origem < total_vertices and 0 <= destino < total_vertices:
-            dijkstra(matriz_adj, vertices, origem, destino)
+            dijkstra(grafo, vertices, origem, destino)
         else:
             print("Indices invalidos.")
     except ValueError:
