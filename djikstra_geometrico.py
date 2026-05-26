@@ -1,11 +1,9 @@
 import math
 from heap import Heap
 
-
 # SE PRONUNCIA DI Á IS TRA 
 
 INF = 1e9 # serve como um valor "nulo"
-
 
 class Vertice:
     def __init__(self, v_id: int, x: float, y: float):
@@ -13,23 +11,18 @@ class Vertice:
         self.x = x
         self.y = y
 
-
 class Aresta:
     def __init__(self, orig: int, dest: int):
         self.orig = orig
         self.dest = dest
 
-
 def calc_dist(x0: float, y0: float, x1: float, y1: float) -> float:
     """Calcula a distância euclidiana entre dois pontos bidimensionais."""
     return math.sqrt((x0 - x1) ** 2 + (y0 - y1) ** 2)
 
-
 def construir_grafo(vertices: list, arestas: list) -> list:
     """Monta e retorna a lista de adjacência preenchida com as distâncias geométricas."""
     total_vertices = len(vertices)
-    # Inicializa a matriz com valor infinito para indicar ausência de conexões
-    # grafo = [[INF] * total_vertices for _ in range(total_vertices)]
     lista_adj = [[] for _ in range (total_vertices)]
     for art in arestas:
         a = art.orig
@@ -49,51 +42,45 @@ def visualizar_lista_console(lista_adj: list):
     print("=" * 65)
     
     for i in range(n):
-        # Imprime o vértice de origem
         print(f" Vértice {i:>2} |", end="")
-         # Carga de dados idêntica à lista V do arquivo MenorCaminhoDijkstrav2.c
-        # Se a lista estiver vazia (sem vizinhos)
         if not lista_adj[i]:
             print(" Sem conexões", end="")
         else:
-            # Percorre os vizinhos do vértice i
-            # Lembrando que sua tupla foi salva como (distancia, destino)
             for distancia, destino in lista_adj[i]:
                 print(f" ➔ (Dest: {destino:>2}, dist: {distancia:>5.1f})", end="")
-                
-        print() # Quebra de linha para o próximo vértice
+        print() 
         
     print("=" * 65 + "\n")
-
-
 
 def dijkstra(grafo: list, vertices: list, inicio: int, fim: int):
     total_vertices = len(vertices)
     dist = [INF] * total_vertices
     prev = [-1] * total_vertices
-    visited = [False] * total_vertices
 
     dist[inicio] = 0.0
 
-    for _ in range(total_vertices):
-        # Encontra o vértice não visitado com a menor distância atualizada
-        u = -1 # vértice atual
-        min_dist = INF
-        for j in range(total_vertices):
-            if not visited[j] and dist[j] < min_dist:
-                u = j
-                min_dist = dist[j]  
+    # 1. Instancia a sua Fila de Prioridade e insere a origem
+    minha_heap = Heap()
+    minha_heap.insert((0.0, inicio))
 
-        if u == -1:
-            break
+    # 2. O laço roda enquanto houver caminhos para testar
+    while not minha_heap.isEmpty():
+        
+        # 3. Extrai imediatamente o vértice mais próximo
+        dist_atual, u = minha_heap.extractMin()
 
-        visited[u] = True
+        # 4. Remoção Preguiçosa (Lazy Deletion)
+        if dist_atual > dist[u]:
+            continue
 
-        # Relaxamento das arestas vizinhas
-        for v in range(total_vertices): # vertice vizinho
-            if grafo[u][v] < INF and dist[u] + grafo[u][v] < dist[v]:
-                dist[v] = dist[u] + grafo[u][v]
+        # 5. Varre apenas os vizinhos reais na Lista de Adjacência
+        for peso, v in grafo[u]:
+            # Relaxamento da aresta
+            if dist[u] + peso < dist[v]:
+                dist[v] = dist[u] + peso
                 prev[v] = u
+                # 6. Insere o novo melhor caminho na Heap
+                minha_heap.insert((dist[v], v))
 
     if dist[fim] == INF:
         print(f"Sem caminho entre {inicio} e {fim}")
@@ -101,7 +88,7 @@ def dijkstra(grafo: list, vertices: list, inicio: int, fim: int):
 
     print(f"\nDistancia total: {dist[fim]:.2f} u. m.")
 
-    # Reconstrói a rota de trás para frente seguindo os predecessores
+    # Reconstrói a rota de trás para frente
     caminho = []
     v = fim
     while v != -1:
@@ -113,9 +100,7 @@ def dijkstra(grafo: list, vertices: list, inicio: int, fim: int):
     for vert_id in caminho:
         print(f"{vert_id} (x={vertices[vert_id].x:.6f}, y={vertices[vert_id].y:.6f})")
 
-
 def main():
-   
     v_dados = [
         (0, 149.0, 200.0), (1, 225.0, 200.0), (2, 156.175936, 193.978675),
         (3, 164.288446, 189.294915), (4, 173.091035, 186.091035), (5, 182.316240, 184.464382),
@@ -125,7 +110,6 @@ def main():
         (15, 173.091035, 213.908965), (16, 164.288446, 210.705085), (17, 156.175936, 206.021325)
     ]
     vertices = [Vertice(d[0], d[1], d[2]) for d in v_dados]
-
     
     a_dados = [
         (0, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 0),
@@ -138,6 +122,7 @@ def main():
 
     grafo = construir_grafo(vertices, arestas)
     visualizar_lista_console(grafo)
+    
     print("Menor caminho entre dois vertices - algoritmo de Dijkstra\n")    
     print(f"Total de vertices: {total_vertices}")
     print(f"Total de arestas : {total_arestas}")
@@ -152,7 +137,6 @@ def main():
             print("Indices invalidos.")
     except ValueError:
         print("Entrada invalida. Digite números inteiros.")
-
 
 if __name__ == "__main__":
     main()

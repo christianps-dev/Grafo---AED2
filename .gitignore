@@ -1,0 +1,45 @@
+# Compiled object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+*.a
+*.so
+*.dylib
+
+# Temporary files
+*.tmp
+*.temp
+*~
+*.swp
+*.swo
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build directories
+build/
+dist/
+cmake-build-debug/
+cmake-build-release/
+
+# Dependencies (if any)
+node_modules/
+.gradle/
+
+# Local environment files
+.env
+.env.local
+*.local
+
+# Backup files
+*.bak
+*.backup
