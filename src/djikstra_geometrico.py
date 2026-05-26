@@ -1,5 +1,5 @@
 import math
-from heap import Heap
+from .heap import Heap
 
 # SE PRONUNCIA DI Á IS TRA 
 

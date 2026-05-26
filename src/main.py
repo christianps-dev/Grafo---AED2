@@ -1,4 +1,4 @@
-from grafo import Grafo
+from .grafo import Grafo
 
 def main():
     eh_digrafo = False
