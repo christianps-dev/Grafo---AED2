@@ -2,6 +2,7 @@ import customtkinter as ctk
 import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import djikstra_geometrico as dg
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -40,33 +41,57 @@ class App(ctk.CTk):
         self.botao_gerar_grafo = ctk.CTkButton(self.barra_lateral,text='Gerar Grafo',width=100,command=self.gerar_grafo)
         self.botao_gerar_grafo.pack(padx=10,pady=(20,20)) 
 
-        self.botao_dijkistra = ctk.CTkButton(self.barra_lateral,text='Testar Algoritmo',width=100)
+        self.botao_dijkistra = ctk.CTkButton(self.barra_lateral,text='Testar Algoritmo',width=100,command=self.calcular_caminho)
         self.botao_dijkistra.pack(padx=10,pady=(0,20)) 
     
-    def gerar_grafo(self):
+    def gerar_grafo(self, caminho=None):
 
         if self.canvas:
             self.canvas.get_tk_widget().destroy()
 
-        grafo = nx.erdos_renyi_graph(n=5,p=0.6)
-        pos = nx.spring_layout(grafo,seed=42)
+        self.grafo = nx.gnp_random_graph(n=8, p=0.4,seed=1)
+        
+
+        self.pos = nx.spring_layout(self.grafo,seed=1)
 
 
+        self.fig, self.ax = plt.subplots(figsize=(6, 6), facecolor="#2b2b2b")
+        self.ax.set_facecolor("#2b2b2b")
+        self.ax.axis("off")
 
-        fig, ax = plt.subplots(figsize=(6, 6), facecolor="#2b2b2b")
-        ax.set_facecolor("#2b2b2b")
-        ax.axis("off")
+        nx.draw_networkx_edges(self.grafo, self.pos, ax=self.ax, edge_color="#555555", width=1.5)
 
-        nx.draw_networkx_edges(grafo, pos, ax=ax, edge_color="#555555", width=1.5)
+        nx.draw_networkx_nodes(self.grafo,self.pos,ax=self.ax,node_size=400,edgecolors="white",linewidths=1)
 
-        nx.draw_networkx_nodes(grafo,pos,ax=ax,node_size=400,edgecolors="white",linewidths=1)
+        nx.draw_networkx_labels(self.grafo,self.pos,ax=self.ax)
 
-        nx.draw_networkx_labels(grafo,pos,ax=ax)
+        if caminho:
+            
+            aresta_caminho = list(zip(caminho[:-1],caminho[1:]))
+            label_caminho = nx.get_edge_attributes(self.grafo,"weight")
 
-        self.canvas = FigureCanvasTkAgg(fig,master=self.barra_ilustracao)
+            nx.draw_networkx_nodes(self.grafo,pos=self.pos,nodelist=caminho,node_color="#FF0000")
+            nx.draw_networkx_edges(self.grafo,pos=self.pos,edgelist=aresta_caminho,ax=self.ax,edge_color="#ff0000")
+            nx.draw_networkx_edge_labels(self.grafo,pos=self.pos,ax=self.ax,edge_labels=label_caminho)
+
+        self.canvas = FigureCanvasTkAgg(self.fig,master=self.barra_ilustracao)
         self.canvas.draw()
 
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def calcular_caminho(self):
+
+        # caminho = dg.dijkstra(
+        #     dg.construir_grafo(self.grafo.nodes(),self.grafo.edges()),
+        #     self.grafo.nodes(),
+        #     self.vertice_inicial,
+        #     self.vertice_final) 
+
+
+        comprimento ,caminho = nx.single_source_dijkstra(
+            self.grafo,source=int(self.vertice_inicial.get()),target=int(self.vertice_final.get()))
+
+        self.gerar_grafo(caminho=caminho)
 
 
         
