@@ -135,8 +135,8 @@ class Janela(QMainWindow):
         self.lbl_estatisticas.setText("<b>Estatísticas:</b>\nTempo: -\nNós explorados: -\nCusto: -")
         self.desenhar_grafo()
 
-    def calcular_caminho(self):
-        self.resultado = dijkstra
+    def calculo_caminho(self):
+        self.resultado = dijkstra(self.grafo,self.vertices,self.origem_selecionada,self.destino_selecionado)
 
 
 class VisualizadorMapa(QGraphicsView):
@@ -158,8 +158,6 @@ class VisualizadorMapa(QGraphicsView):
         else:
             super().mousePressEvent(event)
             
-    def calculo_caminho(self):
-        self.resultado = dijkstra(self.grafo,self.vertices,self.origem_selecionada,self.destino_selecionado)
 
 app = QApplication(sys.argv)
 janela = Janela()
