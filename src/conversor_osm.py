@@ -73,7 +73,7 @@ def reduzir_escala(pontos: list, redutor: float):
 def parse_osm(filename: str):
     nome_base = os.path.splitext(os.path.basename(filename))[0]
     
-    arq_saida = f"../out/{nome_base}.poly"
+    arq_saida = f"Grafo---AED2\out\{nome_base}.poly"
 
     nodes = []
     id_map = {}

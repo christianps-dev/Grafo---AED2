@@ -2,7 +2,9 @@ import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsView, QVBoxLayout, QHBoxLayout, QPushButton, QWidget, QLabel, QFileDialog
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter
-from djikstra_geometrico import carregar_mapa_poly, construir_grafo
+from djikstra_geometrico import carregar_mapa_poly, dijkstra,construir_grafo
+from conversor_osm import parse_osm
+from math import sqrt
 
 class Janela(QMainWindow):
     def __init__(self):
@@ -15,6 +17,7 @@ class Janela(QMainWindow):
         
         arq_poly = "Grafo---AED2\out\mapaUFG.poly"
         self.vertices, self.arestas = carregar_mapa_poly(arq_poly)
+        self.grafo = construir_grafo(self.vertices,self.arestas)
         
 
         self.init_ui()
@@ -34,14 +37,14 @@ class Janela(QMainWindow):
         
         self.lbl_estatisticas = QLabel("<b>Estatísticas:</b>\nTempo: -\nNós explorados: -\nCusto: -")
 
-        self.btn_importar = QPushButton("Importar Mapa (.txt)")
-        # self.btn_importar.clicked.connect(self.importar_mapa)
+        self.btn_importar = QPushButton("Importar Mapa (.osm)")
+        self.btn_importar.clicked.connect(self.importar_mapa)
 
         self.btn_calcular = QPushButton("Calcular Menor Caminho")
-        # self.btn_calcular.clicked.connect(self.simular_calculo_rota)
+        self.btn_calcular.clicked.connect(self.calculo_caminho)
 
         self.btn_limpar = QPushButton("Desfazer Seleção")
-        # self.btn_limpar.clicked.connect(self.limpar_selecoes)
+        self.btn_limpar.clicked.connect(self.limpar_selecoes)
 
 
         self.painel.addWidget(self.lbl_titulo)
@@ -78,7 +81,8 @@ class Janela(QMainWindow):
             y1 = self.vertices[aresta.orig].y
             x2 = self.vertices[aresta.dest].x 
             y2 = self.vertices[aresta.dest].y
-            dir = dir_mao_unica if aresta.tipo else dir_mao_dupla
+            
+            
             self.scene.addLine(x1, y1, x2, y2, dir)
 
         for vertice in self.vertices:
@@ -94,7 +98,45 @@ class Janela(QMainWindow):
             
             self.scene.addEllipse(vertice.x - tamanho/2, vertice.y - tamanho/2, tamanho, tamanho, QPen(Qt.GlobalColor.black), vertice_tipo)
 
+    def tratar_clique_mapa(self, x, y):
+        proximidade_limite = 10.0
+        vertice_proximo = None
+        menor_distancia = float('inf')
 
+        for vertice in self.vertices:
+            dist = sqrt(((vertice.x - x) ** 2 + (vertice.y - y) ** 2))
+            if dist < menor_distancia and dist < proximidade_limite:
+                menor_distancia = dist
+                vertice_proximo = vertice.id
+
+        if vertice_proximo is not None:
+            if self.origem_selecionada is None:
+                self.origem_selecionada = vertice_proximo
+            elif self.destino_selecionado is None and vertice_proximo != self.origem_selecionada:
+                self.destino_selecionado = vertice_proximo
+            
+            self.atualizar_interface_status()
+            self.desenhar_grafo()
+
+    def atualizar_interface_status(self):
+        origem_txt = f"<font color='green'><b>{self.origem_selecionada}</b></font>" if self.origem_selecionada else "Não selecionada"
+        destino_txt = f"<font color='red'><b>{self.destino_selecionado}</b></font>" if self.destino_selecionado else "Não selecionado"
+        self.lbl_status.setText(f"Origem: {origem_txt}\nDestino: {destino_txt}")
+
+    def importar_mapa(self):
+        caminho_arquivo, _ = QFileDialog.getOpenFileName(self, "Selecionar Arquivo de Mapa", "", "Arquivos (*.osm)")
+        print(f"Arquivo selecionado: {caminho_arquivo}")
+        parse_osm(caminho_arquivo)
+
+    def limpar_selecoes(self):
+        self.origem_selecionada = None
+        self.destino_selecionado = None
+        self.atualizar_interface_status()
+        self.lbl_estatisticas.setText("<b>Estatísticas:</b>\nTempo: -\nNós explorados: -\nCusto: -")
+        self.desenhar_grafo()
+
+    def calcular_caminho(self):
+        self.resultado = dijkstra
 
 
 class VisualizadorMapa(QGraphicsView):
@@ -115,9 +157,9 @@ class VisualizadorMapa(QGraphicsView):
             self.pai.tratar_clique_mapa(pos_cena.x(), pos_cena.y())
         else:
             super().mousePressEvent(event)
-
-
-
+            
+    def calculo_caminho(self):
+        self.resultado = dijkstra(self.grafo,self.vertices,self.origem_selecionada,self.destino_selecionado)
 
 app = QApplication(sys.argv)
 janela = Janela()
