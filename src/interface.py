@@ -14,11 +14,13 @@ class Janela(QMainWindow):
 
         self.origem_selecionada = None
         self.destino_selecionado = None
+        self.caminho_resultado = []
         
         arq_poly = "Grafo---AED2\out\mapaUFG.poly"
         self.vertices, self.arestas = carregar_mapa_poly(arq_poly)
         self.grafo = construir_grafo(self.vertices,self.arestas)
         
+        self.mapa_vertices = {v.id: v for v in self.vertices}
 
         self.init_ui()
         self.desenhar_grafo()
@@ -41,7 +43,7 @@ class Janela(QMainWindow):
         self.btn_importar.clicked.connect(self.importar_mapa)
 
         self.btn_calcular = QPushButton("Calcular Menor Caminho")
-        self.btn_calcular.clicked.connect(self.calculo_caminho)
+        self.btn_calcular.clicked.connect(self.calcular_caminho)
 
         self.btn_limpar = QPushButton("Desfazer Seleção")
         self.btn_limpar.clicked.connect(self.limpar_selecoes)
@@ -81,9 +83,24 @@ class Janela(QMainWindow):
             y1 = self.vertices[aresta.orig].y
             x2 = self.vertices[aresta.dest].x 
             y2 = self.vertices[aresta.dest].y
-            
+            dir = dir_mao_unica if aresta.tipo == 1 else dir_mao_dupla
             
             self.scene.addLine(x1, y1, x2, y2, dir)
+
+        if self.caminho_resultado and len(self.caminho_resultado) > 1:
+            pen_rota = QPen(QColor("#e67e22"), 4, Qt.PenStyle.SolidLine)
+            
+            for i in range(len(self.caminho_resultado) - 1):
+                u = self.caminho_resultado[i]
+                v = self.caminho_resultado[i + 1]
+
+                v_u = self.mapa_vertices.get(u)
+                v_v = self.mapa_vertices.get(v)
+
+                if v_u and v_v:
+                    self.scene.addLine(v_u.x, v_u.y, v_v.x, v_v.y, pen_rota)
+
+        
 
         for vertice in self.vertices:
             vertice_tipo = vertice_normal
@@ -136,7 +153,9 @@ class Janela(QMainWindow):
         self.desenhar_grafo()
 
     def calcular_caminho(self):
-        self.resultado = dijkstra
+        self.resultado = dijkstra(self.grafo,self.vertices,self.origem_selecionada,self.destino_selecionado)
+        self.caminho_resultado = self.resultado.get("caminho_ids", [])
+        self.desenhar_grafo()
 
 
 class VisualizadorMapa(QGraphicsView):
@@ -160,6 +179,9 @@ class VisualizadorMapa(QGraphicsView):
             
     def calculo_caminho(self):
         self.resultado = dijkstra(self.grafo,self.vertices,self.origem_selecionada,self.destino_selecionado)
+        caminho, tempo_ms, nos_explorados, dist_metros = self.resultado
+        self.caminho_resultado = caminho
+
 
 app = QApplication(sys.argv)
 janela = Janela()
