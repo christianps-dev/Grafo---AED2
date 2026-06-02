@@ -149,6 +149,7 @@ class Janela(QMainWindow):
         self.origem_selecionada = None
         self.destino_selecionado = None
         self.atualizar_interface_status()
+        self.caminho_resultado = []
         self.lbl_estatisticas.setText("<b>Estatísticas:</b>\nTempo: -\nNós explorados: -\nCusto: -")
         self.desenhar_grafo()
 
