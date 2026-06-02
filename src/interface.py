@@ -81,7 +81,8 @@ class Janela(QMainWindow):
             y1 = self.vertices[aresta.orig].y
             x2 = self.vertices[aresta.dest].x 
             y2 = self.vertices[aresta.dest].y
-            
+
+            dir = dir_mao_unica if aresta.tipo == 1 else dir_mao_dupla
             
             self.scene.addLine(x1, y1, x2, y2, dir)
 
