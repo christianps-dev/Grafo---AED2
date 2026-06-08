@@ -14,9 +14,10 @@ class Janela(QMainWindow):
 
         self.origem_selecionada = None
         self.destino_selecionado = None
+        self.estado = None
         self.caminho_resultado = []
         
-        arq_poly = "Grafo---AED2\out\mapaUFG.poly"
+        arq_poly = "../out/mapaUFG.poly"
         self.vertices, self.arestas = carregar_mapa_poly(arq_poly)
         self.grafo = construir_grafo(self.vertices,self.arestas)
         
@@ -34,10 +35,12 @@ class Janela(QMainWindow):
         self.lbl_titulo = QLabel("Algoritmo de Dijkstra")
         
 
-        self.lbl_status = QLabel("Origem: Não selecionada\nDestino: Não selecionado")
+        self.lbl_status = QLabel("Origem: Não selecionada<p>Destino: Não selecionado</p><p>Estado: Nulo</p>")
         
         
-        self.lbl_estatisticas = QLabel("<b>Estatísticas:</b>\nTempo: -\nNós explorados: -\nCusto: -")
+        self.lbl_estatisticas = QLabel("<b>Estatísticas:</b> <p>Tempo: -</p>"
+                                       "<p>Nós explorados: -</p>"
+                                       "<p>Custo: -</p>")
 
         self.btn_importar = QPushButton("Importar Mapa (.osm)")
         self.btn_importar.clicked.connect(self.importar_mapa)
@@ -138,7 +141,7 @@ class Janela(QMainWindow):
     def atualizar_interface_status(self):
         origem_txt = f"<font color='green'><b>{self.origem_selecionada}</b></font>" if self.origem_selecionada else "Não selecionada"
         destino_txt = f"<font color='red'><b>{self.destino_selecionado}</b></font>" if self.destino_selecionado else "Não selecionado"
-        self.lbl_status.setText(f"Origem: {origem_txt}\nDestino: {destino_txt}")
+        self.lbl_status.setText(f"Origem: {origem_txt}<p>Destino: {destino_txt}</p><p>Estado: {self.estado}")
 
     def importar_mapa(self):
         caminho_arquivo, _ = QFileDialog.getOpenFileName(self, "Selecionar Arquivo de Mapa", "", "Arquivos (*.osm)")
@@ -148,23 +151,39 @@ class Janela(QMainWindow):
     def limpar_selecoes(self):
         self.origem_selecionada = None
         self.destino_selecionado = None
+        self.estado = None
         self.atualizar_interface_status()
         self.caminho_resultado = []
         self.lbl_estatisticas.setText("<b>Estatísticas:</b>\nTempo: -\nNós explorados: -\nCusto: -")
+        self.lbl_status.setText(f"Origem: {self.origem_selecionada}<p>Destino: {self.destino_selecionado}</p><p>Estado: {self.estado}")
         self.desenhar_grafo()
 
     def calcular_caminho(self):
-        self.resultado = dijkstra(self.grafo,self.vertices,self.origem_selecionada,self.destino_selecionado)
-        self.caminho_resultado = self.resultado.get("caminho_ids", [])
-        self.desenhar_grafo()
+        if (self.origem_selecionada is not None) and (self.destino_selecionado is not None):
+            self.resultado = dijkstra(self.grafo,self.vertices,self.origem_selecionada,self.destino_selecionado)
+
+            if self.resultado is not None:
+                estatistica_teste = (f"<b>Estatísticas:</b><p>Tempo: - {self.resultado.get("tempo_ms", float)} ms</p>" +
+                                              f"<p>Nós explorados: - {self.resultado.get("nos_explorados", float)} nós</p>"
+                                              "<p>Custo: -</p>")
+                self.estado = "Concluido"
+
+                self.lbl_estatisticas.setText(estatistica_teste)
+
+                self.caminho_resultado = self.resultado.get("caminho_ids", [])
+                self.desenhar_grafo()
+            else:
+                self.estado = "Não Encontrado"
+
+            self.atualizar_interface_status()
 
 
 class VisualizadorMapa(QGraphicsView):
     def __init__(self, cena, pai):
         super().__init__(cena)
         self.pai = pai
-        
-        self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)  
+
+        self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
 
     def wheelEvent(self, event):
@@ -177,12 +196,11 @@ class VisualizadorMapa(QGraphicsView):
             self.pai.tratar_clique_mapa(pos_cena.x(), pos_cena.y())
         else:
             super().mousePressEvent(event)
-            
+
     def calculo_caminho(self):
         self.resultado = dijkstra(self.grafo,self.vertices,self.origem_selecionada,self.destino_selecionado)
         caminho, tempo_ms, nos_explorados, dist_metros = self.resultado
         self.caminho_resultado = caminho
-
 
 app = QApplication(sys.argv)
 janela = Janela()
