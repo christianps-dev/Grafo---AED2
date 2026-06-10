@@ -165,7 +165,7 @@ class Janela(QMainWindow):
             if self.resultado is not None:
                 estatistica_teste = (f"<b>Estatísticas:</b><p>Tempo: - {self.resultado.get("tempo_ms", float)} ms</p>" +
                                               f"<p>Nós explorados: - {self.resultado.get("nos_explorados", float)} nós</p>"
-                                              "<p>Custo: -</p>")
+                                              f"<p>Custo: - {self.resultado.get("distancia_metros", float):.2f} metros</p>")
                 self.estado = "Concluido"
 
                 self.lbl_estatisticas.setText(estatistica_teste)
