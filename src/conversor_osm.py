@@ -1,8 +1,7 @@
-import sys
 import os
 import math
 import xml.etree.ElementTree as ET
-from config import FATOR_ESCALA  # Usando nossa variável global!
+from config import FATOR_ESCALA
 
 A_WGS84 = 6378137.0
 F_WGS84 = 1.0 / 298.257223563
@@ -21,7 +20,7 @@ class Node:
 class Way:
     def __init__(self):
         self.node_ids = []
-        self.is_oneway = False  # NOVO: Atributo para definir mão única
+        self.is_oneway = False
 
 def converter_para_utm(lat_deg: float, lon_deg: float) -> tuple:
     e2 = F_WGS84 * (2 - F_WGS84)
@@ -70,10 +69,12 @@ def reduzir_escala(pontos: list, redutor: float):
         p.x = (p.x - min_x) / redutor
         p.y = (p.y - min_y) / redutor
 
-def parse_osm(filename: str):
+def parse_osm(filename: str) -> str:
     nome_base = os.path.splitext(os.path.basename(filename))[0]
     
-    arq_saida = f"Grafo---AED2\out\{nome_base}.poly"
+    diretorio_saida = os.path.join("Grafo---AED2", "out")
+    os.makedirs(diretorio_saida, exist_ok=True)
+    arq_saida = os.path.join(diretorio_saida, f"{nome_base}.poly")
 
     nodes = []
     id_map = {}
@@ -82,9 +83,8 @@ def parse_osm(filename: str):
     try:
         tree = ET.parse(filename)
         root = tree.getroot()
-    except Exception as e:
-        print(f"Erro ao abrir ou processar o arquivo: {e}")
-        return
+    except Exception:
+        return ""
 
     total_nodes = 0
     for node_elem in root.findall('node'):
@@ -125,8 +125,7 @@ def parse_osm(filename: str):
             ways.append(current_way)
 
     if not nodes:
-        print("Nenhum vértice válido encontrado no arquivo OSM.")
-        return
+        return ""
 
     reduzir_escala(nodes, FATOR_ESCALA)
 
@@ -144,9 +143,7 @@ def parse_osm(filename: str):
 
         num_id_contador = 0
         for w in ways:
-            
             tipo_via = 1 if w.is_oneway else 2 
-            
             for j in range(len(w.node_ids) - 1):
                 origem = w.node_ids[j]
                 destino = w.node_ids[j + 1]
@@ -155,10 +152,4 @@ def parse_osm(filename: str):
 
         out.write("0\n")
 
-    print(f'Arquivo "{arq_saida}" criado com sucesso.')
-
-"""if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print(f"Uso: python {sys.argv[0]} arquivo.osm")
-        sys.exit(1)
-    parse_osm(sys.argv[1])"""
+    return arq_saida

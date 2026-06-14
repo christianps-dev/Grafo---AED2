@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt, QRectF, QTimer, QLineF, QPointF
 from PyQt6.QtGui import QPen, QBrush, QColor, QImage, QPainter, QFont
 
 from djikstra_geometrico import carregar_mapa_poly, dijkstra, construir_grafo, Vertice, Aresta
+from conversor_osm import parse_osm
 from config import FATOR_ESCALA
 
 COR_MAO_DUPLA   = QColor("#2980b9")
@@ -24,6 +25,7 @@ BRUSH_NORMAL    = QBrush(COR_NORMAL)
 BRUSH_ORIGEM    = QBrush(COR_ORIGEM)
 BRUSH_DESTINO   = QBrush(COR_DESTINO)
 BRUSH_TEMP      = QBrush(COR_TEMP)
+
 
 class GrafoItem(QGraphicsItem):
     def __init__(self, janela):
@@ -210,6 +212,7 @@ class Janela(QMainWindow):
         self.btn_copiar = None
         self.btn_calcular = None
         self.btn_importar = None
+        self.btn_converter_osm = None
         self.lbl_status = None
         self.chk_numerar = None
         self.chk_isolar = None
@@ -282,6 +285,9 @@ class Janela(QMainWindow):
         self.btn_importar = QPushButton("Importar Mapa (.poly)")
         self.btn_importar.clicked.connect(self.importar_mapa)
 
+        self.btn_converter_osm = QPushButton("Converter e Usar Arquivo .osm")
+        self.btn_converter_osm.clicked.connect(self.converter_usar_osm)
+
         self.btn_calcular = QPushButton("Calcular Menor Caminho")
         self.btn_calcular.clicked.connect(self.calcular_caminho)
 
@@ -293,6 +299,7 @@ class Janela(QMainWindow):
 
         self.painel.addWidget(self.lbl_titulo)
         self.painel.addWidget(self.btn_importar)
+        self.painel.addWidget(self.btn_converter_osm)
         self.painel.addWidget(self.btn_copiar)
         self.painel.addWidget(QLabel("<hr>"))
 
@@ -452,6 +459,27 @@ class Janela(QMainWindow):
         self.atualizar_interface_status()
         
         QTimer.singleShot(0, self.ajustar_view_ao_mapa)
+
+    def converter_usar_osm(self):
+        caminho_arquivo, _ = QFileDialog.getOpenFileName(self, "Selecionar Arquivo de Mapa OSM", "", "Arquivos (*.osm)")
+        if not caminho_arquivo:
+            return
+
+        try:
+            arq_saida = parse_osm(caminho_arquivo)
+            if arq_saida:
+                self.vertices, self.arestas = carregar_mapa_poly(arq_saida)
+                self.atualizar_estrutura_grafo()
+                self.limpar_selecoes()
+                self.estado = "Mapa OSM convertido e importado."
+                self.atualizar_interface_status()
+                QTimer.singleShot(0, self.ajustar_view_ao_mapa)
+            else:
+                self.estado = "Falha ao converter arquivo OSM."
+                self.atualizar_interface_status()
+        except Exception:
+            self.estado = "Erro na conversao OSM."
+            self.atualizar_interface_status()
 
     def limpar_selecoes(self):
         self.origem_selecionada = None
