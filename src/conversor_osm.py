@@ -72,13 +72,11 @@ def reduzir_escala(pontos: list, redutor: float):
 def parse_osm(filename: str) -> str:
     nome_base = os.path.splitext(os.path.basename(filename))[0]
     
-    diretorio_saida = os.path.join("Grafo---AED2", "out")
+    diretorio_saida = os.path.join("out")
     os.makedirs(diretorio_saida, exist_ok=True)
     arq_saida = os.path.join(diretorio_saida, f"{nome_base}.poly")
 
-    nodes = []
-    id_map = {}
-    ways = []
+    all_nodes_temp = {}
 
     try:
         tree = ET.parse(filename)
@@ -86,25 +84,31 @@ def parse_osm(filename: str) -> str:
     except Exception:
         return ""
 
-    total_nodes = 0
     for node_elem in root.findall('node'):
         if 'id' in node_elem.attrib and 'lat' in node_elem.attrib and 'lon' in node_elem.attrib:
             id_orig = int(node_elem.attrib['id'])
             lat = float(node_elem.attrib['lat'])
             lon = float(node_elem.attrib['lon'])
+            all_nodes_temp[id_orig] = (lat, lon)
 
-            node_obj = Node(id_orig, lat, lon, total_nodes)
-            node_obj.x, node_obj.y = converter_para_utm(lat, lon)
+    tipos_vias_validas = {
+        'motorway', 'trunk', 'primary', 'secondary', 'tertiary',
+        'unclassified', 'residential', 'living_street', 'motorway_link',
+        'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link'
+    }
 
-            nodes.append(node_obj)
-            id_map[id_orig] = total_nodes
-            total_nodes += 1
+    ways = []
+    nos_utilizados_ids = set()
 
     for way_elem in root.findall('way'):
         current_way = Way()
         is_reverse = False
+        is_highway = False
         
         for tag in way_elem.findall('tag'):
+            if tag.attrib.get('k') == 'highway' and tag.attrib.get('v') in tipos_vias_validas:
+                is_highway = True
+            
             if tag.attrib.get('k') == 'oneway':
                 val = tag.attrib.get('v')
                 if val in ('yes', 'true', '1'):
@@ -113,16 +117,32 @@ def parse_osm(filename: str) -> str:
                     current_way.is_oneway = True
                     is_reverse = True
 
+        if not is_highway:
+            continue
+
         for nd_elem in way_elem.findall('nd'):
             ref = int(nd_elem.attrib['ref'])
-            if ref in id_map:
-                current_way.node_ids.append(id_map[ref])
+            if ref in all_nodes_temp:
+                current_way.node_ids.append(ref)
+                nos_utilizados_ids.add(ref)
 
         if is_reverse:
             current_way.node_ids.reverse()
 
         if len(current_way.node_ids) > 1:
             ways.append(current_way)
+
+    nodes = []
+    id_map = {}
+    total_nodes = 0
+
+    for orig_id in nos_utilizados_ids:
+        lat, lon = all_nodes_temp[orig_id]
+        node_obj = Node(orig_id, lat, lon, total_nodes)
+        node_obj.x, node_obj.y = converter_para_utm(lat, lon)
+        nodes.append(node_obj)
+        id_map[orig_id] = total_nodes
+        total_nodes += 1
 
     if not nodes:
         return ""
@@ -145,9 +165,9 @@ def parse_osm(filename: str) -> str:
         for w in ways:
             tipo_via = 1 if w.is_oneway else 2 
             for j in range(len(w.node_ids) - 1):
-                origem = w.node_ids[j]
-                destino = w.node_ids[j + 1]
-                out.write(f"{num_id_contador}\t{origem}\t{destino}\t{tipo_via}\n") 
+                origem_interna = id_map[w.node_ids[j]]
+                destino_interno = id_map[w.node_ids[j + 1]]
+                out.write(f"{num_id_contador}\t{origem_interna}\t{destino_interno}\t{tipo_via}\n") 
                 num_id_contador += 1
 
         out.write("0\n")

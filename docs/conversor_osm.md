@@ -2,9 +2,9 @@
 
 ## 1. Visão Geral do Ficheiro
 
-O ficheiro `conversor_osm.py` é o **módulo de Engenharia de Dados** do sistema. A sua responsabilidade é atuar como uma ponte entre o mundo geográfico real (coordenadas de GPS esféricas) e o mundo computacional lógico (planos cartesianos em píxeis).
+O ficheiro `conversor_osm.py` é o **módulo de Engenharia de Dados e Otimização** do sistema. A sua responsabilidade é atuar como uma ponte entre o mundo geográfico real (coordenadas de GPS esféricas) e o mundo computacional lógico (planos cartesianos em píxeis).
 
-Ele ingere ficheiros brutos gerados pela comunidade OpenStreetMap (`.osm`, estruturados em XML), interpreta as ligações e regras de trânsito locais, aplica projeções cartográficas de nível industrial e exporta um ficheiro de texto limpo (`.poly`) pronto a ser consumido pelo motor de cálculo do Algoritmo de Dijkstra.
+Ele ingere ficheiros brutos gerados pela comunidade OpenStreetMap (`.osm`, estruturados em XML), filtra ruído de dados (edifícios, rios, limites territoriais), interpreta as ligações e regras de trânsito locais, aplica projeções cartográficas de nível industrial e exporta um ficheiro de texto limpo e conciso (`.poly`), pronto a ser consumido de forma ultra-rápida pelo motor de cálculo do Algoritmo de Dijkstra.
 
 ---
 
@@ -36,7 +36,7 @@ O script constrói o mapa temporariamente na memória através de duas entidades
 * Armazena o `id_original` providenciado pelo OpenStreetMap (que costumam ser números gigantescos).
 * Armazena a `lat` (Latitude) e `lon` (Longitude) brutas.
 * Inicializa variáveis `x` e `y` para receber a coordenada planificada.
-* Regista o `id_interno` (um índice sequencial de $0$ até $N$, crítico para a construção da Lista de Adjacência no passo seguinte).
+* Regista o `id_interno` (um índice sequencial de $0$ até $N$, crítico para a construção da Lista de Adjacência no passo seguinte). Este ID agora é atribuído de forma tardia, garantindo que apenas nós válidos o recebam.
 
 ### Classe `Way` (Caminho / Via)
 
@@ -65,31 +65,32 @@ Esta função atua como uma "câmara" que enquadra o mapa gerado.
 
 ## 5. Fluxo de Execução Principal (`parse_osm`)
 
-A função `parse_osm(filename)` é o coração deste script. O seu ciclo de vida está dividido em 5 etapas rigorosas:
+A função `parse_osm(filename)` é o coração deste script. O seu ciclo de vida foi otimizado para evitar a retenção de dados inúteis e está dividido em 5 etapas rigorosas:
 
-1. **Gestão de Caminhos (`Paths`)**
-* Extrai apenas o nome do ficheiro (ex: `mapaUFG.osm` vira `mapaUFG`) e direcciona a saída obrigatoriamente para a pasta `../out/`.
+1. **Gestão de Caminhos (`Paths`) e Indexação Geográfica Preliminar**
 
+* Extrai apenas o nome do ficheiro (ex: `mapaUFG.osm` vira `mapaUFG`) e direciona a saída obrigatoriamente para a pasta `../out/`.
+* Varre os `<node>` do XML e cria um dicionário temporário (`all_nodes_temp`) contendo apenas os IDs reais e as coordenadas (sem executar conversões pesadas numa primeira fase).
 
-2. **Extração de Vértices (`<node>`)**
-* Varre todo o XML. Por cada nó que possua um ID e coordenadas, gera uma instância da classe `Node`, calcula o seu X e Y em UTM e regista este objeto num dicionário de tradução (`id_map`), permitindo que a pesquisa de "ID_Real -> ID_Sequencial" ocorra numa complexidade de tempo de $O(1)$.
+2. **Filtragem Topológica e Interpretação de Vias (`<way>`)**
 
+* Varre todas as vias presentes no ficheiro XML. Este é o **ponto crítico de otimização**.
+* **Filtro de Ruído:** O código procura a chave `highway` e valida se o seu valor pertence a um leque estrito de vias motorizadas (`motorway`, `residential`, `primary`, etc.). Se a via for uma vedação, um edifício ou um rio, é sumariamente descartada.
+* **Análise de Direção:** Inspeciona a chave `oneway`. Se o valor for `yes` ou `1`, marca como mão única. Se for `-1`, inverte inteligentemente a matriz de vértices (`node_ids.reverse()`) para corrigir a topologia vetorial da via no grafo computacional.
+* Guarda os IDs dos nós que fazem parte destas vias válidas num *Set* de memória (`nos_utilizados_ids`).
 
-3. **Interpretação de Vias e Regras de Trânsito (`<way>`)**
-* Varre todas as vias presentes no ficheiro XML.
-* **Análise de Direção:** Inspeciona as `tags` em busca da chave `oneway`.
-* Se o valor for `yes`, `true` ou `1`, marca a via como mão única.
-* Se o valor for `-1`, significa que o utilizador que desenhou o mapa no OSM traçou a via do fim para o princípio. O código de forma inteligente ativa a flag e **inverte a matriz de vértices** (`node_ids.reverse()`) para manter o sentido correto no grafo computacional.
+3. **Mapeamento Tardio e Projeção (Eliminação de Nós Órfãos)**
 
-
-
+* Após descobrir quais são os nós que *realmente importam* para o trânsito, o sistema recupera as suas latitudes e longitudes, calcula a projeção matemática (`converter_para_utm`) e gera instâncias da classe `Node`.
+* Aqui, é-lhes atribuído um `id_interno` puramente sequencial (de $0$ a $N$), preenchendo o dicionário de tradução final (`id_map`) em tempo $O(1)$. Árvores e semáforos órfãos ficam de fora do grafo.
 
 4. **Tratamento Final do Eixo Y**
+
 * Na cartografia, o "Norte" (Y positivo) aponta para cima. Contudo, em computação gráfica (Canvas, SVG), a origem `(0,0)` encontra-se no canto superior esquerdo e o eixo Y cresce para baixo.
 * O script identifica o valor máximo de Y e inverte o eixo subtraindo todos os Y a esse máximo (`max_y - p.y`). Sem este passo, o mapa seria renderizado de pernas para o ar.
 
-
 5. **Geração do Contrato Estático (`.poly`)**
-* Escreve no disco o ficheiro resultante organizado em secções numéricas limpas:
+
+* Escreve no disco o ficheiro resultante organizado em secções numéricas rigorosas e livres de ruído:
 * *Linha de Vértices:* Imprime o ID Interno e as coordenadas em formato `float` de 6 casas decimais (`{p.x:.6f}`).
-* *Linha de Arestas:* Itera por cada par de vértices dentro de uma `Way` para gerar os segmentos de reta. Atribui a regra final (`1` para sentido único, `2` para duplo sentido).
+* *Linha de Arestas:* Itera por cada par de vértices dentro de uma `Way` válida para gerar os segmentos de reta. Mapeia de volta os IDs reais para os novos IDs sequenciais, e atribui a regra de trânsito final (`1` para sentido único, `2` para duplo sentido).

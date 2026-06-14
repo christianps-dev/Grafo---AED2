@@ -608,9 +608,3 @@ class Janela(QMainWindow):
 
         self.estado = "Imagem copiada."
         self.atualizar_interface_status()
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    janela = Janela()
-    janela.show()
-    sys.exit(app.exec())

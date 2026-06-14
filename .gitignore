@@ -50,3 +50,4 @@ node_modules/
 # Backup files
 *.bak
 *.backup
+main.spec
