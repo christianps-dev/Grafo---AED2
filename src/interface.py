@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QGraphicsScene, QGraphic
                              QVBoxLayout, QHBoxLayout, QPushButton, QWidget, QLabel,
                              QFileDialog, QComboBox, QCheckBox, QGraphicsItem)
 from PyQt6.QtCore import Qt, QRectF, QTimer, QLineF, QPointF
-from PyQt6.QtGui import QPen, QBrush, QColor, QImage, QPainter, QFont
+from PyQt6.QtGui import QPen, QBrush, QColor, QImage, QPainter, QFont, QPainterPath, QPolygonF
 
 from djikstra_geometrico import carregar_mapa_poly, dijkstra, construir_grafo, Vertice, Aresta
 from conversor_osm import parse_osm
@@ -26,6 +26,12 @@ BRUSH_ORIGEM    = QBrush(COR_ORIGEM)
 BRUSH_DESTINO   = QBrush(COR_DESTINO)
 BRUSH_TEMP      = QBrush(COR_TEMP)
 
+# Variáveis globais para configuração das setas
+ZOOM_MINIMO_SETAS = 4
+TAMANHO_SETA_NORMAL = 2.0
+ANGULO_SETA_NORMAL = math.pi / 10
+TAMANHO_SETA_ROTA = 4.0
+ANGULO_SETA_ROTA = math.pi / 10
 
 class GrafoItem(QGraphicsItem):
     def __init__(self, janela):
@@ -34,12 +40,14 @@ class GrafoItem(QGraphicsItem):
         self._bounding_rect = QRectF()
         self.linhas_unica = []
         self.linhas_dupla = []
+        self.path_setas_unica = QPainterPath()
 
     def atualizar_geometria(self):
         if not self.janela.vertices:
             self._bounding_rect = QRectF()
             self.linhas_unica = []
             self.linhas_dupla = []
+            self.path_setas_unica = QPainterPath()
             return
 
         xs = [v.x for v in self.janela.vertices]
@@ -51,17 +59,44 @@ class GrafoItem(QGraphicsItem):
 
         self.linhas_unica.clear()
         self.linhas_dupla.clear()
+        self.path_setas_unica = QPainterPath()
         
+        raio_vertice = 5.0
+
         mapa = self.janela.mapa_vertices
         for aresta in self.janela.arestas:
             orig = mapa.get(aresta.orig)
             dest = mapa.get(aresta.dest)
             if orig and dest:
-                linha = QLineF(orig.x, orig.y, dest.x, dest.y)
                 if aresta.tipo == 1:
-                    self.linhas_unica.append(linha)
+                    # Lógica apenas para mão única (linha encurtada + seta)
+                    dx = dest.x - orig.x
+                    dy = dest.y - orig.y
+                    dist = math.hypot(dx, dy)
+                    if dist == 0: continue
+
+                    ux = dx / dist
+                    uy = dy / dist
+
+                    p1_x = orig.x + ux * raio_vertice
+                    p1_y = orig.y + uy * raio_vertice
+                    p2_x = dest.x - ux * raio_vertice
+                    p2_y = dest.y - uy * raio_vertice
+
+                    self.linhas_unica.append(QLineF(p1_x, p1_y, p2_x, p2_y))
+                    
+                    angulo_ida = math.atan2(p2_y - p1_y, p2_x - p1_x)
+                    poly = QPolygonF([
+                        QPointF(p2_x, p2_y),
+                        QPointF(p2_x - TAMANHO_SETA_NORMAL * math.cos(angulo_ida - ANGULO_SETA_NORMAL),
+                                p2_y - TAMANHO_SETA_NORMAL * math.sin(angulo_ida - ANGULO_SETA_NORMAL)),
+                        QPointF(p2_x - TAMANHO_SETA_NORMAL * math.cos(angulo_ida + ANGULO_SETA_NORMAL),
+                                p2_y - TAMANHO_SETA_NORMAL * math.sin(angulo_ida + ANGULO_SETA_NORMAL))
+                    ])
+                    self.path_setas_unica.addPolygon(poly)
                 else:
-                    self.linhas_dupla.append(linha)
+                    # Lógica para mão dupla (linha única central, sem setas)
+                    self.linhas_dupla.append(QLineF(orig.x, orig.y, dest.x, dest.y))
 
         self.prepareGeometryChange()
 
@@ -72,11 +107,13 @@ class GrafoItem(QGraphicsItem):
         escala = painter.transform().m11()
         escala_linhas = max(escala, 1.0)
         escala_tamanho = max(escala, 1.0)
+        
+        mostrar_setas = escala >= ZOOM_MINIMO_SETAS
 
-        pen_dupla = QPen(COR_MAO_DUPLA, 2 / escala_linhas)
-        pen_unica = QPen(COR_MAO_UNICA, 2 / escala_linhas)
+        pen_dupla = QPen(COR_MAO_DUPLA, 1.5 / escala_linhas)
+        pen_unica = QPen(COR_MAO_UNICA, 1.5 / escala_linhas)
         pen_borda = QPen(COR_BORDA, 1 / escala_linhas)
-        pen_rota = QPen(COR_ROTA, 4 / escala_linhas, Qt.PenStyle.SolidLine)
+        pen_rota = QPen(COR_ROTA, 3.5 / escala_linhas, Qt.PenStyle.SolidLine)
 
         tamanho_fonte = max(5, int(8 / escala_linhas))
         fonte_rotulos = QFont("Arial", tamanho_fonte)
@@ -88,14 +125,19 @@ class GrafoItem(QGraphicsItem):
         metade_especial = tamanho_especial / 2
 
         rect_visivel = option.exposedRect
-
         isolar_rota = self.janela.chk_isolar.isChecked() and len(self.janela.caminho_resultado) > 1
 
         if not isolar_rota:
+            # Desenha Arestas Mão Única e Setas
             painter.setPen(pen_unica)
+            painter.setBrush(QBrush(COR_MAO_UNICA))
             painter.drawLines(self.linhas_unica)
+            if mostrar_setas:
+                painter.fillPath(self.path_setas_unica, QBrush(COR_MAO_UNICA))
 
+            # Desenha Arestas Mão Dupla (sem setas)
             painter.setPen(pen_dupla)
+            painter.setBrush(QBrush(COR_MAO_DUPLA))
             painter.drawLines(self.linhas_dupla)
 
         if self.janela.chk_pesos.isChecked():
@@ -124,18 +166,46 @@ class GrafoItem(QGraphicsItem):
                     y_mid = (orig.y + dest.y) / 2
                     painter.drawText(QPointF(x_mid, y_mid), f"{dist:.1f}m")
 
+        # Desenho da rota encontrada com sobreposição
         caminho = self.janela.caminho_resultado
         if caminho and len(caminho) > 1:
             painter.setPen(pen_rota)
+            painter.setBrush(QBrush(COR_ROTA))
             linhas_rota = []
+            path_setas_rota = QPainterPath()
+            tamanho_seta_rota_calc = TAMANHO_SETA_ROTA / escala_linhas
+            
             mapa = self.janela.mapa_vertices
             for i in range(len(caminho) - 1):
                 v_u = mapa.get(caminho[i])
                 v_v = mapa.get(caminho[i + 1])
                 if v_u and v_v:
                     linhas_rota.append(QLineF(v_u.x, v_u.y, v_v.x, v_v.y))
-            painter.drawLines(linhas_rota)
+                    
+                    if mostrar_setas:
+                        dx = v_v.x - v_u.x
+                        dy = v_v.y - v_u.y
+                        dist = math.hypot(dx, dy)
+                        if dist > 0:
+                            ux = dx / dist
+                            uy = dy / dist
+                            px = v_v.x - ux * 5.0
+                            py = v_v.y - uy * 5.0
+                            ang = math.atan2(dy, dx)
+                            poly = QPolygonF([
+                                QPointF(px, py),
+                                QPointF(px - tamanho_seta_rota_calc * math.cos(ang - ANGULO_SETA_ROTA),
+                                        py - tamanho_seta_rota_calc * math.sin(ang - ANGULO_SETA_ROTA)),
+                                QPointF(px - tamanho_seta_rota_calc * math.cos(ang + ANGULO_SETA_ROTA),
+                                        py - tamanho_seta_rota_calc * math.sin(ang + ANGULO_SETA_ROTA))
+                            ])
+                            path_setas_rota.addPolygon(poly)
 
+            painter.drawLines(linhas_rota)
+            if mostrar_setas:
+                painter.fillPath(path_setas_rota, QBrush(COR_ROTA))
+
+        # Renderização dos Vértices
         id_origem = self.janela.origem_selecionada
         id_destino = self.janela.destino_selecionado
         id_temp = self.janela.vertice_temp.id if self.janela.vertice_temp else None
