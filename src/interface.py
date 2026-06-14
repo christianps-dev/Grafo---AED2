@@ -87,19 +87,33 @@ class GrafoItem(QGraphicsItem):
 
         rect_visivel = option.exposedRect
 
-        painter.setPen(pen_unica)
-        painter.drawLines(self.linhas_unica)
+        isolar_rota = self.janela.chk_isolar.isChecked() and len(self.janela.caminho_resultado) > 1
 
-        painter.setPen(pen_dupla)
-        painter.drawLines(self.linhas_dupla)
+        if not isolar_rota:
+            painter.setPen(pen_unica)
+            painter.drawLines(self.linhas_unica)
+
+            painter.setPen(pen_dupla)
+            painter.drawLines(self.linhas_dupla)
 
         if self.janela.chk_pesos.isChecked():
             painter.setPen(QPen(COR_PESO))
             mapa = self.janela.mapa_vertices
+            
+            arestas_caminho = set()
+            if isolar_rota:
+                cam = self.janela.caminho_resultado
+                for i in range(len(cam) - 1):
+                    arestas_caminho.add((cam[i], cam[i+1]))
+                    arestas_caminho.add((cam[i+1], cam[i]))
+
             for aresta in self.janela.arestas:
                 orig = mapa.get(aresta.orig)
                 dest = mapa.get(aresta.dest)
                 if orig and dest:
+                    if isolar_rota and (aresta.orig, aresta.dest) not in arestas_caminho:
+                        continue
+
                     if (max(orig.x, dest.x) < rect_visivel.left() or min(orig.x, dest.x) > rect_visivel.right() or
                             max(orig.y, dest.y) < rect_visivel.top() or min(orig.y, dest.y) > rect_visivel.bottom()):
                         continue
@@ -124,12 +138,28 @@ class GrafoItem(QGraphicsItem):
         id_destino = self.janela.destino_selecionado
         id_temp = self.janela.vertice_temp.id if self.janela.vertice_temp else None
         mostrar_numeros = self.janela.chk_numerar.isChecked()
+        ocultar_vertices = self.janela.chk_ocultar_vertices.isChecked()
 
         offset_label = 5 / escala_linhas
         offset_label_y = 5 / escala_linhas
 
+        ids_caminho = set(self.janela.caminho_resultado) if isolar_rota else set()
+        ids_destaques = set(self.janela.caminho_resultado)
+        if id_origem is not None:
+            ids_destaques.add(id_origem)
+        if id_destino is not None:
+            ids_destaques.add(id_destino)
+        if id_temp is not None:
+            ids_destaques.add(id_temp)
+
         for vertice in self.janela.vertices:
             vx, vy = vertice.x, vertice.y
+
+            if isolar_rota and vertice.id not in ids_caminho:
+                continue
+                
+            if ocultar_vertices and not isolar_rota and vertice.id not in ids_destaques:
+                continue
 
             if vx < rect_visivel.left() or vx > rect_visivel.right() or vy < rect_visivel.top() or vy > rect_visivel.bottom():
                 continue
@@ -182,6 +212,8 @@ class Janela(QMainWindow):
         self.btn_importar = None
         self.lbl_status = None
         self.chk_numerar = None
+        self.chk_isolar = None
+        self.chk_ocultar_vertices = None
         self.lbl_modo = None
         self.chk_pesos = None
         self.lbl_estatisticas = None
@@ -229,6 +261,12 @@ class Janela(QMainWindow):
         self.chk_pesos = QCheckBox("Mostrar Pesos das Arestas")
         self.chk_pesos.stateChanged.connect(self.solicitar_redesenho)
 
+        self.chk_isolar = QCheckBox("Ocultar Elementos Fora da Rota")
+        self.chk_isolar.stateChanged.connect(self.solicitar_redesenho)
+
+        self.chk_ocultar_vertices = QCheckBox("Ocultar Apenas Vértices Não Selecionados")
+        self.chk_ocultar_vertices.stateChanged.connect(self.solicitar_redesenho)
+
         self.lbl_modo = QLabel("<b>Modo de Interação:</b>")
         self.combo_modo = QComboBox()
         self.combo_modo.addItems([
@@ -260,6 +298,8 @@ class Janela(QMainWindow):
 
         self.painel.addWidget(self.chk_numerar)
         self.painel.addWidget(self.chk_pesos)
+        self.painel.addWidget(self.chk_isolar)
+        self.painel.addWidget(self.chk_ocultar_vertices)
         self.painel.addWidget(QLabel("<hr>"))
 
         self.painel.addWidget(self.lbl_modo)
@@ -470,7 +510,6 @@ class Janela(QMainWindow):
 
         self.estado = "Imagem copiada."
         self.atualizar_interface_status()
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
