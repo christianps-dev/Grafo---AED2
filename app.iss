@@ -2,7 +2,7 @@
 ; Nome do seu programa e versão
 AppName=Sistema de Navegação AED2
 AppVersion=1.0
-AppPublisher=Guilherme Oliveira
+AppPublisher=NossoGrupo
 ; Onde será instalado (ex: C:\Program Files\NavegacaoAED2)
 DefaultDirName={autopf}\NavegacaoAED2
 DefaultGroupName=Sistema de Navegação
