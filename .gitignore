@@ -1,53 +1,25 @@
-# Compiled object files
-*.o
-*.obj
-
-# Executables
-*.exe
-*.out
-*.a
-*.so
-*.dylib
-
-# Temporary files
-*.tmp
-*.temp
-*~
-*.swp
-*.swo
-
-# IDE files
-.vscode/
-.idea/
-*.code-workspace
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Build directories
+# ==============================================================================
+# Executáveis e Binários de Distribuição (AppImage / PyInstaller)
+# ==============================================================================
+# Bloqueia os produtos finais pesados que não devem ir para o controle de versão
+*.AppImage
+NavegacaoAED2.AppDir/
 build/
 dist/
-cmake-build-debug/
-cmake-build-release/
+*.spec
 
-# Python
+# ==============================================================================
+# Python (Caches, Compilados e Ambientes Virtuais)
+# ==============================================================================
 __pycache__/
-__pycache__
 *.pyc
 *.pyo
 *.pyd
 
-# Dependencies (if any)
-node_modules/
-.gradle/
+.vscode/
 
-# Local environment files
-.env
-.env.local
-*.local
-
-# Backup files
-*.bak
-*.backup
-main.spec
+# ==============================================================================
+# Lixo do Sistema Operacional (macOS / Windows)
+# ==============================================================================
+.DS_Store
+Thumbs.db
