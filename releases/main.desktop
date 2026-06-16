@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Trabalho AED
+Comment=My Python Application
+Exec=main
+Icon=utility-useful
+Categories=Utility;
